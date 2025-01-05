@@ -1,0 +1,409 @@
+// CPU du CHIP-8 (Code source)
+// gm_chip8, version 0.3 Alpha
+// Du 4 janvier 2025, par Monokeros.
+// Programmé avec Game Maker 7.0 Pro
+// Et son langage GML.
+
+// Used under the "Step" event of the "cpu" object under Game Maker.
+
+if (global.cpu_state == 0) {
+    exit;
+}
+
+if (global.cpu_state == 2) {
+    exit;
+}
+
+if (global.cpu_state == 3) {
+    // To reset the emulation
+
+    var px, py;
+
+    for (px = 0; px < 64; px += 1) {
+        for (py = 0; py < 32; py += 1) {
+            screen[px, py] = 0;
+            // Totally clear screen.
+        }
+    }
+
+    // Reset registers
+
+    var i;
+
+    for (i = 0; i < 16; i += 1) {
+        v[i] = 0;
+        stack[i] = 0;
+        pressed_keys[i] = 0;
+    }
+
+    pc = $200; // 512
+    sp = 0;
+    delay_timer = 0;
+    sound_timer = 0;
+    store_key = 0;
+    I = 0;
+    opcode = 0;
+    kk = 0;
+    wait_key = 0;
+    global.cpu_state = 1;
+}
+
+// Récupération de l'opcode complet
+if (pc < $200 || pc > $FFE) {
+ show_message("Invalid address for PC register.");
+ instance_destroy();
+ pc = -256;
+ exit;
+}
+
+if (pc = -256) {
+ exit;
+}
+
+/* if (wait_key == 1) {
+ exit;
+} */
+
+if (debug == 2) {
+    var log_file;
+    log_file = file_text_open_append("chip8_log.txt");
+
+    file_text_write_string(log_file, "PC started at address: " + string(pc) + chr(13) + chr(10));
+    file_text_close(log_file);
+    debug = 1;
+}
+
+opcode = ((chip_ram[pc] << 8) | chip_ram[pc + 1]);
+
+var i, j;
+var vx, vy;
+var tmp;
+var r;
+var sum;
+var height; // Hauteur sprite
+var jumped;
+
+jumped = 0;
+
+/* if (opcode == $0000) {
+    show_message("Empty memory error.");
+    instance_destroy();
+    exit;
+} */
+
+if (debug == 1) {
+    var log_file;
+    log_file = file_text_open_append("chip8_log.txt");
+
+    file_text_write_string(log_file, "PC: " + string(pc) + " | ");
+    file_text_write_string(log_file, "Opcode: " + string(opcode) + " | ");
+    file_text_write_string(log_file, "I: " + string(I) + " | ");
+
+    file_text_write_string(log_file, "V[$0]: " + string(v[$0]) + " ");
+    file_text_write_string(log_file, "V[$1]: " + string(v[$1]) + " ");
+    file_text_write_string(log_file, "V[$2]: " + string(v[$2]) + " ");
+    file_text_write_string(log_file, "V[$3]: " + string(v[$3]) + " ");
+    file_text_write_string(log_file, "V[$4]: " + string(v[$4]) + " ");
+    file_text_write_string(log_file, "V[$5]: " + string(v[$5]) + " ");
+    file_text_write_string(log_file, "V[$6]: " + string(v[$6]) + " ");
+    file_text_write_string(log_file, "V[$7]: " + string(v[$7]) + " ");
+    file_text_write_string(log_file, "V[$8]: " + string(v[$8]) + " ");
+    file_text_write_string(log_file, "V[$9]: " + string(v[$9]) + " ");
+    file_text_write_string(log_file, "V[$A]: " + string(v[$A]) + " ");
+    file_text_write_string(log_file, "V[$B]: " + string(v[$B]) + " ");
+    file_text_write_string(log_file, "V[$C]: " + string(v[$C]) + " ");
+    file_text_write_string(log_file, "V[$D]: " + string(v[$D]) + " ");
+    file_text_write_string(log_file, "V[$E]: " + string(v[$E]) + " ");
+    file_text_write_string(log_file, "V[$F]: " + string(v[$F]) + chr(13) + chr(10));
+
+    file_text_close(log_file);
+
+}
+
+global.fps_counter += 1;
+
+// Interprétation de l'instruction
+switch (opcode & $F000) {
+    case $0000:
+        // CLS
+        if (opcode == $00E0) {
+            for (i = 0; i < 64; i += 1) {
+                for (j = 0; j < 32; j += 1) {
+                    screen[i, j] = 0;
+                }
+            }
+            //show_message("Screen cleared.");
+        // RET
+        } else if (opcode == $00EE) {
+            pc = stack[sp];
+            sp -= 1;
+            jumped = 1;
+            
+            if (sp < 0) {
+                show_message("Stack underflow error.");
+                instance_destroy();
+                pc = -256;
+                exit;
+            }
+            
+        }
+        // SYS 0nnn isn't used anymore.
+        break;
+    case $1000:
+        // JMP 1nnn
+        pc = opcode & $0FFF;
+        jumped = 1;
+        break;
+    case $2000:
+        // CALL 2nnn
+        sp += 1;
+        stack[sp] = pc + 2;
+        pc = opcode & $0FFF;
+        jumped = 1;
+        
+        if (sp >= 16) {
+            show_message("Stack overflow error.");
+            pc = -256;
+            instance_destroy();
+            exit;
+        }
+        
+        break;
+    case $3000:
+        // 3xkk - Skip next instruction if V[x] = kk
+        vx = ((opcode & $0F00) >> 8);
+        kk = (opcode & $00FF);
+        
+        if (v[vx] == kk) {
+            pc += 2;
+        }
+        break;
+    case $4000:
+        // 4xkk - Skip next instruction if V[x] != kk
+        vx = ((opcode & $0F00) >> 8);
+        kk = (opcode & $00FF);
+        
+        if (v[vx] != kk) {
+            pc += 2;
+        }
+        break;
+    case $5000:
+        // 5xy0: Skip next instruction if v[x] = v[y].
+        vx = ((opcode & $0F00) >> 8);
+        vy = ((opcode & $00F0) >> 4);
+        
+        if (v[vx] == v[vy]) {
+            pc += 2;
+        }
+        break;
+    case $6000:
+        // 6xkk: Sets v[x] value to kk.
+        vx = ((opcode & $0F00) >> 8);
+        kk = (opcode & $00FF);
+        v[vx] = kk;
+        break;
+    case $7000:
+        // 7xkk: Adds kk's value to v[x] register.
+        vx = ((opcode & $0F00) >> 8);
+        kk = (opcode & $00FF);
+        v[vx] = ((v[vx] + kk) & $FF);
+        break;
+    case $8000:
+        //8xy$: Comparison operations
+        vx = (opcode & $0F00) >> 8;
+        vy = (opcode & $00F0) >> 4;
+        
+        switch (opcode & $000F) {
+            case $0:
+                v[vx] = v[vy];
+                break;
+            case $1:
+                v[vx] |= v[vy];
+                break;
+            case $2:
+                v[vx] &= v[vy];
+                break;
+            case $3:
+                v[vx] ^= v[vy];
+                break;
+            case $4:
+                sum = v[vx] + v[vy];
+                if (sum > 255) {
+                    v[$F] = 1; // Carry
+                } else {
+                    v[$F] = 0;
+                }
+                v[vx] = (sum & $FF);
+                break;
+            case $5:
+                if (v[vx] > v[vy]) {
+                    v[$F] = 1; // Carry
+                } else {
+                    v[$F] = 0;
+                }
+                v[vx] = (v[vx] - v[vy]) & $FF;
+                break;
+            case $6:
+                v[$F] = v[vx] & 1;
+                v[vx] = v[vx] >> 1;
+                break;
+            case $7:
+                if (v[vy] > v[vx]) {
+                    v[$F] = 1;
+                } else {
+                    v[$F] = 0;
+                }
+                
+                v[vx] = (v[vy] - v[vx]) & $FF;
+                break;
+            case $E:
+                v[$F] = (v[vx] & $80) >> 7;
+                v[vx] = (v[vx] << 1) & $FF;
+                break;
+        }
+        break;
+    case $9000:
+        // 9xy0: Skip next instruction if v[x] = v[y].
+        vx = ((opcode & $0F00) >> 8);
+        vy = ((opcode & $00F0) >> 4);
+        
+        if (v[vx] != v[vy]) {
+            pc += 2;
+        }
+        break;
+    case $A000:
+        // Annn: Sets I address register to nnn.
+        I = (opcode & $0FFF);
+        break;
+    case $B000:
+        // JMP Bnnn
+        pc = (opcode & $0FFF) + v[0];
+        jumped = 1;
+        break;
+    case $C000:
+        // RND Cxkk
+        vx = ((opcode & $0F00) >> 8);
+        kk = (opcode & $00FF);
+        
+        r = random(256);
+        tmp = (kk & r);
+        v[vx] = tmp;
+        break;
+    case $D000:
+        // Drawing a sprite on screen
+        vx = (opcode & $0F00) >> 8;
+        vy = (opcode & $00F0) >> 4;
+        height = opcode & $000F;
+        
+        v[$F] = 0; // Réinitialisation de la collision
+        
+        var row;
+        var sprite_byte;
+        var col;
+        var pixel;
+        var screen_x, screen_y;
+        
+        for (row = 0; row < height; row += 1) {
+            sprite_byte = chip_ram[I + row];
+            for (col = 0; col < 8; col += 1) {
+                pixel = (sprite_byte >> (7 - col)) & 1;
+                screen_x = (v[vx] + col) mod 64;
+                screen_y = (v[vy] + row) mod 32;
+                
+                //show_message("Drawing pixel at [" + string(screen_x) + ", " + string(screen_y) + "] = " + string(pixel));
+                
+                if (pixel == 1) {
+                    if (screen[screen_x, screen_y] == 1) {
+                        v[$F] = 1;
+                    }
+                    screen[screen_x, screen_y] ^= 1; // XOR
+                }
+            }
+        }
+        screen_redraw();
+        break;
+    case $E000:
+        kk = (opcode & $00FF);
+        vx = (opcode & $0F00) >> 8;
+        
+        if (kk == $9E) {
+            // Si la touche stockée dans v[x] est pressée.
+            if (pressed_keys[v[vx]] == 1) {
+                pc += 2; // Ignorer l'instruction suivante.
+            }
+        } else if (kk == $A1) {
+            // Si la touche stockée dans v[x] n'est pas pressée.
+            if (pressed_keys[v[vx]] == 0) {
+                pc += 2; // Ignorer l'instruction suivante
+            }
+        }
+        break;
+    case $F000:
+        vx = (opcode & $0F00) >> 8;
+        kk = (opcode & $00FF);
+        
+        switch (kk) {
+            case $07:
+                v[vx] = delay_timer;
+                break;
+            case $0A:
+                wait_key = 1;
+                store_key = vx;
+                pc -= 2; // Bloque l'exécution tant qu'aucune touche n'est pressée
+                break;
+            case $15:
+                delay_timer = v[vx];
+                break;
+            case $18:
+                sound_timer = v[vx];
+                break;
+            case $1E:
+                I = (I + v[vx]) & $FFF;
+                break;
+            case $29:
+                I = $050 + (v[vx] * 5);
+                break;
+            case $33:
+                chip_ram[I]     = (v[vx] / 100) mod 10; // Centaines
+                chip_ram[I + 1] = (v[vx] / 10) mod 10; // Dizaines
+                chip_ram[I + 2] = v[vx] mod 10; // Unités
+                break;
+            case $55:
+                var i;
+                for (i = 0; i <= vx; i += 1) {
+                    chip_ram[I + i] = v[i];
+                }
+                break;
+            case $65:
+                var i;
+                for (i = 0; i <= vx; i += 1) {
+                    v[i] = chip_ram[I + i];
+                }
+                break;
+        }
+        
+        break;
+    default:
+        show_message("Unhandled opcode.");
+        //pc = -256;
+        instance_destroy();
+        exit;
+    }
+
+// Decrement internal delay timer. Sound timer is handled via Game Maker's interface (not code).
+if (delay_timer > 0) {
+    delay_timer = delay_timer - 1;
+}
+
+//jumped = 0; // Pour désactiver les sauts (déconseillé).
+// PC register is incremented by 2.
+if (jumped == 1) {
+    jumped = 0;
+} else {
+    pc += 2;
+}
+
+// Step mode back to pause
+if (global.cpu_state == 4) {
+    global.cpu_state = 2;
+}
