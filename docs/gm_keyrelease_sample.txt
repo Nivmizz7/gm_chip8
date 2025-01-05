@@ -1,0 +1,7 @@
+// Sample code of the releasing keys routine of the CPU
+// Only works under Game Maker.
+
+pressed_keys[$1] = 0;
+
+// "1" key is unpressed, so the flag is put back to 0.
+// pressed_keys is an array of value created when the "cpu" object is created.

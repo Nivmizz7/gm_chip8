@@ -1,0 +1,51 @@
+// Code to initialize Chip-8 RAM
+// Some other global variables are stored in the "cpu" object of the Game Maker project
+// GM Chip-8 Alpha 3 (made Under Game Maker 7.0)
+
+global.cpu_state = 0; // CPU State
+delay_timer = 0;
+sound_timer = 0;
+store_key = 0; // Vers où stocker la touche
+global.fps_final = 0;
+global.fps_counter = 0;
+
+for (i = 0; i < 4096; i += 1) {
+    chip_ram[i] = 0;
+}
+
+for (j = 0; j < 16; j += 1) {
+    v[j] = 0;
+    stack[j] = 0;
+    pressed_keys[j] = 0;
+}
+
+// Police rasterizée intégrée sous forme hexadécimale.
+// Charger la font CHIP-8 à partir de $050 en RAM
+chip_ram[$50] = $F0; chip_ram[$51] = $90; chip_ram[$52] = $90; chip_ram[$53] = $90; chip_ram[$54] = $F0; // 0
+chip_ram[$55] = $20; chip_ram[$56] = $60; chip_ram[$57] = $20; chip_ram[$58] = $20; chip_ram[$59] = $70; // 1
+chip_ram[$5A] = $F0; chip_ram[$5B] = $10; chip_ram[$5C] = $F0; chip_ram[$5D] = $80; chip_ram[$5E] = $F0; // 2
+chip_ram[$5F] = $F0; chip_ram[$60] = $10; chip_ram[$61] = $F0; chip_ram[$62] = $10; chip_ram[$63] = $F0; // 3
+chip_ram[$64] = $90; chip_ram[$65] = $90; chip_ram[$66] = $F0; chip_ram[$67] = $10; chip_ram[$68] = $10; // 4
+chip_ram[$69] = $F0; chip_ram[$6A] = $80; chip_ram[$6B] = $F0; chip_ram[$6C] = $10; chip_ram[$6D] = $F0; // 5
+chip_ram[$6E] = $F0; chip_ram[$6F] = $80; chip_ram[$70] = $F0; chip_ram[$71] = $90; chip_ram[$72] = $F0; // 6
+chip_ram[$73] = $F0; chip_ram[$74] = $10; chip_ram[$75] = $20; chip_ram[$76] = $40; chip_ram[$77] = $40; // 7
+chip_ram[$78] = $F0; chip_ram[$79] = $90; chip_ram[$7A] = $F0; chip_ram[$7B] = $90; chip_ram[$7C] = $F0; // 8
+chip_ram[$7D] = $F0; chip_ram[$7E] = $90; chip_ram[$7F] = $F0; chip_ram[$80] = $10; chip_ram[$81] = $F0; // 9
+chip_ram[$82] = $F0; chip_ram[$83] = $90; chip_ram[$84] = $F0; chip_ram[$85] = $90; chip_ram[$86] = $90; // A
+chip_ram[$87] = $E0; chip_ram[$88] = $90; chip_ram[$89] = $E0; chip_ram[$8A] = $90; chip_ram[$8B] = $E0; // B
+chip_ram[$8C] = $F0; chip_ram[$8D] = $80; chip_ram[$8E] = $80; chip_ram[$8F] = $80; chip_ram[$90] = $F0; // C
+chip_ram[$91] = $E0; chip_ram[$92] = $90; chip_ram[$93] = $90; chip_ram[$94] = $90; chip_ram[$95] = $E0; // D
+chip_ram[$96] = $F0; chip_ram[$97] = $80; chip_ram[$98] = $F0; chip_ram[$99] = $80; chip_ram[$9A] = $F0; // E
+chip_ram[$9B] = $F0; chip_ram[$9C] = $80; chip_ram[$9D] = $F0; chip_ram[$9E] = $80; chip_ram[$9F] = $80; // F
+
+// Copie de la ROM vers la mémoire vive
+for (i = 0; i < global.rom_size; i += 1) {
+    chip_ram[$200 + i] = global.rom[i];
+}
+
+var px, py;
+for (px = 0; px < 64; px += 1) {
+    for (py = 0; py < 32; py += 1) {
+        screen[px, py] = 0;
+    }
+}

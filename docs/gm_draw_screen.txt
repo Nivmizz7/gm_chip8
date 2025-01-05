@@ -1,0 +1,17 @@
+// Routine used to render the full Chip-8 video buffer on screen
+// Chip-8 screen has a size of 64x32 pixels with monochrome display.
+// 1 = pixel on, 0 = pixel off
+// Default lit up pixel is lime, but you can change the colors as you want
+// (like c_blue, c_yellow, c_red, c_white, etc.)
+// Used under the "Draw" event of the CPU.
+
+for (i = 0; i < 64; i += 1) {
+    for (j = 0; j < 32; j += 1) {
+        if (screen[i, j] == 1) {
+            draw_set_color(c_lime);
+        } else {
+            draw_set_color(c_black);
+        }
+        draw_rectangle(objScreen.x + i * 4, objScreen.y + j * 4, objScreen.x + 4 + i * 4, objScreen.y + 4 + j * 4, false);
+    }
+}

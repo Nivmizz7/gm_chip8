@@ -1,0 +1,13 @@
+// Sample code of the pressing keys routine of the CPU
+// Only works under Game Maker.
+
+pressed_keys[$1] = 1;
+
+if (wait_key == 1) {
+    wait_key = 0;
+    v[store_key] = $1;
+}
+
+// When user presses the "1" key, its value is stored in the v register
+// at the specified address. Wait_key flag is activated when the $Fx09
+// opcode is encountered, and makes the CPU wait for one key press.
